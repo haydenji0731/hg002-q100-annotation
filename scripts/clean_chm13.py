@@ -52,7 +52,7 @@ def write_filtered(in_fn, in_format, out_fn, out_format, remove_genes, remove_tx
                     ctr += 1
                 temp = {k: ln_o.attributes[k] if k in ln_o.attributes else 'NA' for k in gene_fields}
                 temp['origin_ID'] = temp['ID']
-                temp['ID'] = f'REF.{ctr}'
+                temp['ID'] = f'REF.{ln_o.ctg}.{ctr}'
                 old2new_gene[temp['origin_ID']] = temp['ID']
                 ln_o.attributes = temp
                 out_fh.write(ln_o.to_gStr(out_format))
@@ -85,6 +85,8 @@ def write_filtered(in_fn, in_format, out_fn, out_format, remove_genes, remove_tx
                 else:
                     temp['ID'] = f'{pid}-exon-{ln_o.attributes["exon_number"]}'
                 temp['Parent'] = pid
+                ln_o.attributes = temp
+                out_fh.write(ln_o.to_gStr(out_format))
             elif ln_o.feature == 'CDS':
                 if ln_o.attributes['Parent'] in remove_txes: continue
                 temp = {k: ln_o.attributes[k] if k in ln_o.attributes else 'NA' for k in misc_fields}
@@ -98,6 +100,8 @@ def write_filtered(in_fn, in_format, out_fn, out_format, remove_genes, remove_tx
                 else:
                     temp['ID'] = f'{pid}-CDS-{ln_o.attributes["exon_number"]}'
                 temp['Parent'] = pid
+                ln_o.attributes = temp
+                out_fh.write(ln_o.to_gStr(out_format))
     out_fh.close()
 
 def main(in_fn, out_dir, in_format, out_format):

@@ -37,41 +37,55 @@ def write_lst(lst, fn):
 
 class gLine():
     def __init__(self, ln, format):
-        if format.lower() == 'gtf':
-            kv_sep = ' '
-            quoted = True
-        elif format.lower() == 'gff':
-            kv_sep = '='
-            quoted = True
+        if ln is None:
+            self.init_empty()
         else:
-            print(tmessage("invalid file format", Mtype.ERR))
-            sys.exit(-1)
-        fields = split_ln(ln, sep='\t')
-        if len(fields) != 9:
-            print(tmessage("a line must have 9 columns", Mtype.ERR))
-            sys.exit(-1)
+            if format.lower() == 'gtf':
+                kv_sep = ' '
+                quoted = True
+            elif format.lower() == 'gff':
+                kv_sep = '='
+                quoted = True
+            else:
+                print(tmessage("invalid file format", Mtype.ERR))
+                sys.exit(-1)
+            fields = split_ln(ln, sep='\t')
+            if len(fields) != 9:
+                print(tmessage("a line must have 9 columns", Mtype.ERR))
+                sys.exit(-1)
 
-        self.ctg = fields[0]
-        self.src = fields[1]
-        self.feature = fields[2]
-        self.start = int(fields[3])
-        self.end = int(fields[4])
-        self.score = float(fields[5]) if fields[5] != '.' else None
-        self.strand = fields[6]
-        self.frame = fields[7] if fields[7] != '.' else None
+            self.ctg = fields[0]
+            self.src = fields[1]
+            self.feature = fields[2]
+            self.start = int(fields[3])
+            self.end = int(fields[4])
+            self.score = float(fields[5]) if fields[5] != '.' else None
+            self.strand = fields[6]
+            self.frame = fields[7] if fields[7] != '.' else None
 
-        temp = split_ln(fields[8], sep=';')
-        self.attributes = dict()
-        for att in temp:
-            kv_pair = att.split(kv_sep)
-            if len(kv_pair) < 2:
-                continue
-            k = kv_pair[0]
-            v = kv_pair[1]
-            if quoted:  v = v.replace('"', '')
-            self.attributes[k] = v
-
-    def to_gStr(self, format):
+            temp = split_ln(fields[8], sep=';')
+            self.attributes = dict()
+            for att in temp:
+                kv_pair = att.split(kv_sep)
+                if len(kv_pair) < 2:
+                    continue
+                k = kv_pair[0]
+                v = kv_pair[1]
+                if quoted:  v = v.replace('"', '')
+                self.attributes[k] = v
+    
+    def init_empty(self) -> None:
+        self.ctg = None
+        self.src = None
+        self.feature = None
+        self.start = None
+        self.end = None
+        self.score = None
+        self.strand = None
+        self.frame = None
+        self.attributes = None
+    
+    def to_gStr(self, format) -> str:
         gStr = f'{self.ctg}\t{self.src}\t{self.feature}\t{self.start}\t{self.end}'
         gStr += f'\t{to_dot(self.score)}\t{self.strand}\t{to_dot(self.frame)}\t'
         temp = list(self.attributes.items())
