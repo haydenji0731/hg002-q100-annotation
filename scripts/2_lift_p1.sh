@@ -13,7 +13,7 @@ spec_fn="/ccb/salz4-3/hji20/hg002-q100-annotation/data/id_spec.csv"
 threads=24
 
 mkdir -p $out_dir
-./make_gffutils_db.py $ref_fn "${ref_fn}_db" $spec_fn
+#./make_gffutils_db.py $ref_fn "${ref_fn}_db" $spec_fn
 
 # mm2 -N 100 set as default
 liftoff -db "${ref_fn}_db" -chroms $chroms_fn \

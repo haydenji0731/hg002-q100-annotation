@@ -83,7 +83,7 @@ class gLine():
         self.score = None
         self.strand = None
         self.frame = None
-        self.attributes = None
+        self.attributes = dict()
     
     def to_gStr(self, format) -> str:
         gStr = f'{self.ctg}\t{self.src}\t{self.feature}\t{self.start}\t{self.end}'
