@@ -5,8 +5,9 @@ set -x
 # mask rDNA regions of the target genome
 
 ctg_fn=$1
-out_dir=$2
-prefix=$3
+vdj_fn=$2
+out_dir=$3
+prefix=$4
 
 full_genome="/ccb/salz4-3/hji20/hg002-q100-annotation/data/hg002v1.1.fasta"
 rdna_fn="/ccb/salz4-3/hji20/hg002-q100-annotation/data/rDNA.fa"
@@ -26,7 +27,7 @@ awk -v s="${similarity}" -v l="${length}" '{if($10 > s && $7 > l) {print}}' \
    < "${out_dir}/${prefix}.coords" > "${out_dir}/${prefix}.filtered.coords"
 awk '{print $18 "\t" $1-1 "\t" $2}' < "${out_dir}/${prefix}.filtered.coords" > "${out_dir}/${prefix}.filtered.bed"
 
-cat $vdj_region_fn "${out_dir}/${prefix}.filtered.bed" > "${out_dir}/${prefix}.mask_regions.bed"
+cat $vdj_fn "${out_dir}/${prefix}.filtered.bed" > "${out_dir}/${prefix}.mask_regions.bed"
 
 bedtools maskfasta -fi "${out_dir}/${prefix}.fa" -bed "${out_dir}/${prefix}.mask_regions.bed" -fo "${out_dir}/${prefix}.masked.fasta"
 samtools faidx "${out_dir}/${prefix}.masked.fasta"

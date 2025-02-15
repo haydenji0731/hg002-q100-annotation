@@ -4,23 +4,23 @@
 
 from commons import *
 
-def build_rdna_unit(gene_o, unit_id, format):
-    unit_o = gLine(None, format)
-    unit_o.ctg = gene_o.ctg
-    unit_o.src = gene_o.src
-    unit_o.start = gene_o.start
-    unit_o.end = gene_o.end
-    unit_o.strand = gene_o.strand
-    unit_o.frame = gene_o.frame
-    unit_o.score = gene_o.score
-    unit_o.feature = "unit"
-    unit_o.attributes["ID"] = unit_id
-    return unit_o
+def copy_o(in_o, oid, format, feature):
+    out_o = gLine(None, format)
+    out_o.ctg = in_o.ctg
+    out_o.src = in_o.src
+    out_o.start = in_o.start
+    out_o.end = in_o.end
+    out_o.strand = in_o.strand
+    out_o.frame = in_o.frame
+    out_o.score = in_o.score
+    out_o.feature = feature
+    out_o.attributes["ID"] = oid
+    return out_o
 
 def isolate_rdna_units(fn, format) -> dict:
     rdna_subtypes = ["RNA18S", "RNA5-8S", "RNA28S"]
     gene_fields = ['ID', 'gene_name', 'gene_biotype']
-    unit_ctr = 1
+    unit_ctr = 0
     unit_d = dict()
     with open(fn, 'r') as fh:
         for ln in fh:
@@ -29,11 +29,11 @@ def isolate_rdna_units(fn, format) -> dict:
             if ln_o.feature == 'gene':
                 if ln_o.attributes['gene_biotype'] == 'rRNA':
                     if 'RNA45S' in ln_o.attributes['gene_name']:
+                        unit_ctr += 1
                         el_ctr = 1
                         unit_id = f'RDNA.{unit_ctr}' # ctg info omitted
-                        unit_o = build_rdna_unit(ln_o, unit_id, format)
+                        unit_o = copy_o(ln_o, unit_id, format, "unit")
                         unit_d[unit_id] = (unit_o, [])
-                        unit_ctr += 1
                         temp = {k: ln_o.attributes[k] if k in ln_o.attributes else 'NA' for k in gene_fields}
                         temp['Parent'] = unit_id
                         temp['origin_ID'] = temp['ID']
@@ -57,13 +57,22 @@ def write_rdna(unit_d, fn, format):
        for unit_id in  unit_d:
            unit_o, genes = unit_d[unit_id]
            fh.write(unit_o.to_gStr(format))
-           for gene_o in genes:
-               fh.write(gene_o.to_gStr(format))
+           for x in genes:
+               x.feature = "transcript" # change feature type to transcript from gene
+               x.attributes['origin_ID'] = x.attributes['origin_ID'].replace('G', 'T')
+               x.attributes['transcript_biotype'] = x.attributes.pop('gene_biotype')
+               x.attributes.pop("gene_name")
+               fh.write(x.to_gStr(format))
+               exon_o = copy_o(x, f'{x.attributes["ID"]}-exon-1', format, "exon")
+               exon_o.attributes['Parent'] = x.attributes["ID"]
+               exon_o.attributes['exon_number'] = 1
+               fh.write(exon_o.to_gStr(format))
 
 def main(in_fn, in_format, out_fn, out_format):
     unit_d = isolate_rdna_units(in_fn, in_format)
+    print(tmessage(f'identified {len(unit_d)} full rDNA units', Mtype.PROG))
     write_rdna(unit_d, out_fn, out_format)
+    print(tmessage(f'finished', Mtype.PROG))
     
-
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])

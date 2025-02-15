@@ -16,22 +16,20 @@ def sift(in_fn, format, gene_filters, tx_filters):
             if ln_o.feature == 'gene':
                 fid = ln_o.attributes['ID']
                 # assert 'gene_biotype' in ln_o.attributes # sanity check; success
-                if ln_o.attributes['gene_biotype'] in gene_filters or \
-                    ln_o.attributes['extra_copy_number'] != '0':
-                    # keep 5S rRNAs
+                if ln_o.attributes['extra_copy_number'] != '0':
+                    remove_genes.append(fid)
+                elif ln_o.attributes['gene_biotype'] in gene_filters:
                     if ln_o.attributes['gene_biotype'] == 'rRNA' and 'RNA5S' in ln_o.attributes['ID']:
                         continue
                     remove_genes.append(fid)
             elif ln_o.feature == 'transcript':
                 fid = ln_o.attributes['ID']
-                if 'transcript_biotype' not in ln_o.attributes:
-                    ln_o.attributes['transcript_biotype'] = 'NA'
-                if ln_o.attributes['transcript_biotype'] in tx_filters or \
-                    ln_o.attributes['extra_copy_number'] != '0':
-                    # keep 5S rRNAs
-                    if ln_o.attributes['transcript_biotype'] == 'rRNA' and 'RNA5S' in ln_o.attributes['Parent']:
+                if ln_o.attributes['extra_copy_number'] != '0':
+                    remove_genes.append(fid)
+                elif ln_o.attributes['transcript_biotype'] in gene_filters:
+                    if ln_o.attributes['transcript_biotype'] == 'rRNA' and 'RNA5S' in ln_o.attributes['ID']:
                         continue
-                    remove_txes.append(fid)
+                    remove_genes.append(fid)
     return remove_genes, remove_txes
 
 def write_filtered(in_fn, in_format, out_fn, out_format, remove_genes, remove_txes):
