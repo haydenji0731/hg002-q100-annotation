@@ -48,7 +48,7 @@ def write_rdna(unit_d, fn, format):
                x.feature = "transcript" # change feature type to transcript from gene
                x.attributes['origin_ID'] = x.attributes['origin_ID'].replace('G', 'T')
                x.attributes['transcript_biotype'] = x.attributes.pop('gene_biotype')
-               x.attributes.pop("gene_name")
+            #    x.attributes.pop("gene_name")
                fh.write(x.to_gStr(format))
                exon_o = copy_o(x, f'{x.attributes["ID"]}-exon-1', format, "exon")
                exon_o.attributes['Parent'] = x.attributes["ID"]

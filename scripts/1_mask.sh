@@ -15,10 +15,10 @@ similarity=96
 length=1000
 threads=36
 
-#samtools faidx -r $ctg_fn $full_genome > "${out_dir}/${prefix}.fa"
-#samtools faidx "${out_dir}/${prefix}.fa"
+samtools faidx -r $ctg_fn $full_genome > "${out_dir}/${prefix}.fa"
+samtools faidx "${out_dir}/${prefix}.fa"
 
-#nucmer --maxmatch -t $threads -l 31 -c 100 "${out_dir}/${prefix}.fa" $rdna_fn -p "${out_dir}/${prefix}"
+nucmer --maxmatch -t $threads -l 31 -c 100 "${out_dir}/${prefix}.fa" $rdna_fn -p "${out_dir}/${prefix}"
 delta-filter -1 "${out_dir}/${prefix}.delta" > "${out_dir}/${prefix}.1to1.delta"
 show-coords -lcHr "${out_dir}/${prefix}.1to1.delta" > "${out_dir}/${prefix}.1to1.coords"
 show-coords -lcHr "${out_dir}/${prefix}.delta" > "${out_dir}/${prefix}.coords"

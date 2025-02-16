@@ -1,3 +1,4 @@
 results/
 tools/
 scripts/__pycache__/
+scripts/tidy/__pycache__/
