@@ -4,19 +4,6 @@
 
 from commons import *
 
-def copy_o(in_o, oid, format, feature):
-    out_o = gLine(None, format)
-    out_o.ctg = in_o.ctg
-    out_o.src = in_o.src
-    out_o.start = in_o.start
-    out_o.end = in_o.end
-    out_o.strand = in_o.strand
-    out_o.frame = in_o.frame
-    out_o.score = in_o.score
-    out_o.feature = feature
-    out_o.attributes["ID"] = oid
-    return out_o
-
 def isolate_rdna_units(fn, format) -> dict:
     rdna_subtypes = ["RNA18S", "RNA5-8S", "RNA28S"]
     gene_fields = ['ID', 'gene_name', 'gene_biotype']

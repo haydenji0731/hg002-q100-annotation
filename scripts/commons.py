@@ -30,6 +30,19 @@ def to_dot(v):
         out = '.'
     return out
 
+def copy_o(in_o, oid, format, feature):
+    out_o = gLine(None, format)
+    out_o.ctg = in_o.ctg
+    out_o.src = in_o.src
+    out_o.start = in_o.start
+    out_o.end = in_o.end
+    out_o.strand = in_o.strand
+    out_o.frame = in_o.frame
+    out_o.score = in_o.score
+    out_o.feature = feature
+    out_o.attributes["ID"] = oid
+    return out_o
+
 def write_lst(lst, fn):
     with open(fn, 'w') as fh:
         for x in lst:
