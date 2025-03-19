@@ -21,7 +21,7 @@ def main(args):
                 if args.char_limit != -1:
                     new_gid = f'{args.prefix}_{ln_o.ctg[:args.char_limit].lower()}_{gene_ctr}'
                 else:
-                    new_gid = f'{args.prefix}_{ln_o.ctg.lower()}_{gene_ctr}'
+                    new_gid = f'{args.prefix}_{ln_o.ctg.lower().replace("x", "X").replace("y", "Y")}_{gene_ctr}'
                 ln_o.attributes['ID'] = new_gid
                 assert old_gid not in isoform_ctr
                 isoform_ctr[old_gid] = 1

@@ -16,9 +16,11 @@ RESET = '\033[0m'
 
 # TODO: confirm these tsl exceptions
 START_TSLE = ['aa:Met', 'aa:Leu']
-STARTS = ['ATG', 'CTG', 'TTG']
 STOP_TSLE = ['aa:TERM']
 PTC_TSLE = ['aa:Sec']
+
+START_CODONS = ['ATG', 'CTG', 'TTG']
+STOP_CODONS = ['TAA', 'TAG', 'TGA']
 
 class Mtype(Enum):
     PROG = (GREEN, "PROGRESS")
@@ -60,6 +62,19 @@ def write_lst(lst, fn):
         for x in lst:
             fh.write(f'{x}\n')
 
+def load_lst(fn) -> list:
+    lst = []
+    with open(fn, 'r') as fh:
+        for ln in fh:
+            x = ln.strip()
+            lst.append(x)
+    return lst
+
+def write_tup_lst(lst, fn):
+    with open(fn, 'w') as fh:
+        for x in lst:
+            fh.write(f'{",".join(x)}\n')
+
 def check_dir(d):
     if not os.path.exists(d):
         os.makedirs(d)
@@ -67,6 +82,9 @@ def check_dir(d):
 def store_params(args, fn):
     with open(fn, 'w') as f:
         json.dump(args.__dict__, f, indent=2)
+
+def is_pickled(fn):
+    return fn.lower().endswith('.pkl')
 
 # custom classes
 class gLine():
@@ -213,7 +231,37 @@ class gFeat():
                         self.chains[0][j].end != o.chains[0][j].end: return False
         return True
     
+    def to_str(self, sep) -> str:
+        s = f'{self.ctg}\tLiftoff\t{self.type}\t{self.start}\t{self.end}\t'
+        frame = '.' if self.frame is None else self.frame
+        s += f'.\t{self.strand}\t{frame}\t'
+        for k in self.att_tbl:
+            s += f'{k}{sep}{self.att_tbl[k]};'
+        return s
+    
 class gAn():
     def __init__(self, gene_l: list, tx_l: list):
         self.genes = {x.fid: x for x in gene_l}
         self.txes = {x.fid: x for x in tx_l}
+    
+    def to_str(self, fmt) -> str:
+        sep = "=" if fmt.lower() == 'gff' else ' '
+        gene_ctr = 0
+        tx_ctr = 0
+        out_lns = []
+        for gid in self.genes:
+            gene = self.genes[gid]
+            out_lns.append(gene.to_str(sep))
+            gene_ctr += 1
+            for tid in gene.children:
+                tx = self.txes[tid]
+                out_lns.append(tx.to_str(sep))
+                for exon in tx.chains[0]:
+                    out_lns.append(exon.to_str(sep))
+                for cds in tx.chains[1]:
+                    out_lns.append(cds.to_str(sep))
+                tx_ctr += 1
+        assert len(self.genes) == gene_ctr
+        assert len(self.txes) == tx_ctr
+        s = '\n'.join(out_lns) + '\n'
+        return s

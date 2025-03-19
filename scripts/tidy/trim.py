@@ -3,16 +3,8 @@ from Bio.Seq import Seq
 import psa
 import copy
 
-# def load_tsle(fn) -> dict:
-#     df = pd.read_csv(fn)
-#     tsle = dict()
-#     for _, row in df.iterrows():
-#         tsle[row['transcript_id']] = row['exception']
-#     return tsle
-
 def calc_clen(x) -> int:
     clen = 0
-
     if not x.is_chain_init(): return -1
     for c in x.chains[1]:
         clen += c.end - c.start + 1
@@ -32,20 +24,20 @@ def zero_start_frame(x) -> bool:
     return True
 
 
-def start_or_end(cseq, r_pseq, l) -> int:
+def start_or_end(cseq, r_pseq, l):
     temp = cseq[l:]
     temp_pseq = Seq.translate(temp)
     aln = psa.water(moltype='prot', qseq=temp_pseq, sseq=r_pseq)
-    psim_1 = aln.pidentity
+    nident_1 = aln.nidentity
     temp = cseq[:-l]
     temp_pseq = Seq.translate(temp)
     aln = psa.water(moltype='prot', qseq=temp_pseq, sseq=r_pseq)
-    psim_2 = aln.pidentity
-    if psim_1 > psim_2:
-        return 0
-    elif psim_2 > psim_1:
-        return 1
-    return -1 # not undetermined
+    nident_2 = aln.nidentity
+    if nident_1 > nident_2:
+        return 0, nident_1, nident_2
+    elif nident_2 > nident_1:
+        return 1, nident_1, nident_2
+    return -1, nident_1, nident_2
 
 def check_cds_integrity(cds_chain):
     is_valid = True
@@ -101,50 +93,62 @@ def shift_cds(tx, l, side):
     return new_cds_chain
 
 def main(args):
-    if not args.in_file.lower().endswith('.pkl'):
+    if not is_pickled(args.in_file):
         print(tmessage("input file must a pickle object", Mtype.ERR))
         sys.exit(-1)
     
     print(tmessage("loading pickled gan", Mtype.PROG))
-    with open(args.in_file, 'rb') as f: in_gan = pickle.load(f)
+    with open(args.in_file, 'rb') as f: gan = pickle.load(f)
 
     print(tmessage("calculating CDS lengths", Mtype.PROG))
-    clen_tbl = {tid: calc_clen(tx) for tid, tx in in_gan.txes.items()}
-    for tx in in_gan.txes.values(): 
+    clen_tbl = {tid: calc_clen(tx) for tid, tx in gan.txes.items()}
+    for tx in gan.txes.values(): 
         if zero_start_frame(tx): clen_tbl[tx.fid] = calc_clen(tx)
 
-    pfa = pyfastx.Fasta(args.prot_file)
-    nfa = pyfastx.Fasta(args.nucl_file)
     cfa = pyfastx.Fasta(args.cds_file)
     r_pfa = pyfastx.Fasta(args.ref_file)
-    plen_tbl = {x.name: len(x.seq) for x in pfa}
 
     manual = []
-    shifted = []
+    start_shifted = []
+    aln_shifted = []
     ctr = 0
     for tid in tqdm(clen_tbl):
         mod = clen_tbl[tid] % 3
-        tx = in_gan.txes[tid]
+        tx = gan.txes[tid]
         if mod != 0:
             ctr += 1
-            res = start_or_end(cfa[tid].seq, r_pfa[tx.att_tbl['origin_ID']].seq, mod)
-            if res == -1:
-                manual.append(tid); continue
+            cseq = cfa[tid].seq
+            if cseq[:3] in START_CODONS:
+                start_shifted.append((tid, str(mod)))
+                shifted_cds_chain = shift_cds(tx, mod, 1) # trim at the end
+                tx.chains[1] = shifted_cds_chain
+                tx.sort_chain(1)
+                tx.att_tbl['manual'] = 'True'
             else:
-                shifted.append(tid)
-            # else:
-            #     shifted_cds_chain = shift_cds(tx, mod, res)
-            #     tx.chains[1] = shifted_cds_chain
-            #     tx.sort_chain(1)
+                side, nident_start, nident_end = start_or_end(cseq, r_pfa[tx.att_tbl['origin_ID']].seq, mod)
+                if side == -1:
+                    manual.append((tid, str(mod), str(nident_start), str(nident_end)))
+                    tx.att_tbl['manual'] = 'False'
+                else:
+                    aln_shifted.append((tid, str(mod), str(side), str(nident_start), str(nident_end)))
+                    shifted_cds_chain = shift_cds(tx, mod, side)
+                    tx.chains[1] = shifted_cds_chain
+                    tx.sort_chain(1)
+                    tx.att_tbl['manual'] = 'True'
+        else:
+            tx.att_tbl['manual'] = 'False'
+
     print(tmessage(f"{ctr} coding transcripts with CDS len indivisible by 3", Mtype.PROG))
-    print(tmessage(f"{len(shifted)} / {ctr} trimmed", Mtype.PROG))
+    print(tmessage(f"{len(start_shifted) + len(aln_shifted)} / {ctr} trimmed", Mtype.PROG))
     print(tmessage(f"{len(manual)} / {ctr} needs manual inspection", Mtype.PROG))
-    
 
 
-    # if args.tsl_except:
-    #     if not os.path.exists(args.tsl_except):
-    #         print(tmessage("tsl exception file not found", Mtype.ERR))
-    #         sys.exit(-1)
-    #     tsle = load_tsle(args.tsl_except)
-    
+    print(tmessage(f"saving results", Mtype.PROG))
+    write_tup_lst(start_shifted, os.path.join(args.out_dir, 'start_shifted.csv'))
+    write_tup_lst(aln_shifted, os.path.join(args.out_dir, 'aln_shifted.csv'))
+    write_tup_lst(manual, os.path.join(args.out_dir, 'manual_shifts.csv'))
+    s = gan.to_str(args.fmt)
+
+    with open(os.path.join(args.out_dir, f'trimmed.{args.fmt}'), 'w') as fh: fh.write(s)
+    save_pth = os.path.join(args.out_dir, 'trimmed.pkl')
+    with open(save_pth, 'wb') as f: pickle.dump(gan, f)

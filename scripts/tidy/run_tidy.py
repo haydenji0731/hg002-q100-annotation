@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 
 from utils import *
-import name, build, trim
+import name, build, trim, label, sweep
 
 def parse():
     parser = argparse.ArgumentParser(description="")
-    parser.add_argument('--ext', type=str, help="", required=False, default="gff")
+
+    # TODO: add -i as a common arg
+    parser.add_argument('--fmt', type=str, help="", required=False, \
+                    default="gff", choices=['gff', 'gtf'])
     parser.add_argument('-o', '--out-dir', type=str, help="", required=True)
+
     subparsers = parser.add_subparsers(dest='module', help="")
 
     # assumes a sorted input gff file
@@ -26,17 +30,30 @@ def parse():
     
     parser_trim = subparsers.add_parser('trim', help="")
     parser_trim.add_argument('-i', '--in-file', type=str, help="", required=True)
-    parser_trim.add_argument('-p', '--prot-file', type=str, help="", required=True)
-    parser_trim.add_argument('-n', '--nucl-file', type=str, help="", required=True)
     parser_trim.add_argument('-c', '--cds-file', type=str, help="", required=True)
     parser_trim.add_argument('-r', '--ref-file', type=str, help="", required=True)
-    parser_trim.add_argument('-e', '--tsl-except', type=str, help="", required=False)
+    parser_trim.add_argument('-d', '--min-diff', type=float, help="", required=False, default=5.0)
+
+    parser_label = subparsers.add_parser('label', help="")
+    parser_label.add_argument('-i', '--in-file', type=str, help="", required=True)
+    parser_label.add_argument('-c', '--cds-file', type=str, help="", required=True)
+    parser_label.add_argument('-r', '--ref-file', type=str, help="", required=True)
+    parser_label.add_argument('-p', '--prot-file', type=str, help="", required=True)
+    parser_label.add_argument('-e', '--tsl-except', type=str, help="", required=False)
+    parser_label.add_argument('-m', '--mane-file', type=str, help="mane select", required=False)
+
+    parser_sweep = subparsers.add_parser('sweep', help="")
+    parser_sweep.add_argument('-i', '--in-file', type=str, help="", required=True)
+    parser_sweep.add_argument('-w', '--window', type=int, help="", required=False, default=90)
+    parser_sweep.add_argument('-n', '--nucl-file', type=str, help="", required=True)
+    
     args = parser.parse_args()
     return args
 
 def main():
     args = parse()
     check_dir(args.out_dir)
+    # TODO: add an 'all' module that runs all of these ops
     if args.module == 'name':
         print(tmessage(f'renaming features', Mtype.PROG))
         param_fn = os.path.join(args.out_dir, "name_params.json")
@@ -52,6 +69,16 @@ def main():
         param_fn = os.path.join(args.out_dir, "trim_params.json")
         store_params(args, param_fn)
         trim.main(args)
+    elif args.module == 'label':
+        print(tmessage(f'adding auxiliary information', Mtype.PROG))
+        param_fn = os.path.join(args.out_dir, "label_params.json")
+        store_params(args, param_fn)
+        label.main(args)
+    elif args.module == 'sweep':
+        print(tmessage(f'looking for CDS corrections', Mtype.PROG))
+        param_fn = os.path.join(args.out_dir, "sweep_params.json")
+        store_params(args, param_fn)
+        sweep.main(args)
     print(tmessage(f'finished', Mtype.PROG))
 
 if __name__ == "__main__":
