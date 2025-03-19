@@ -15,6 +15,8 @@ similarity=96
 length=1000
 threads=36
 
+mkdir -p $out_dir
+
 samtools faidx -r $ctg_fn $full_genome > "${out_dir}/${prefix}.fa"
 samtools faidx "${out_dir}/${prefix}.fa"
 

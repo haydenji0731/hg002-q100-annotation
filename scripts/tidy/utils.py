@@ -1,12 +1,24 @@
 from datetime import datetime
 from enum import Enum
 import sys
+import pandas as pd
 import argparse
+import pickle
+import os
+import json
+import pyfastx
+from tqdm import tqdm
 
 RED = '\033[31m'
 GREEN = '\033[32m'
 YELLOW = '\033[33m'
 RESET = '\033[0m'
+
+# TODO: confirm these tsl exceptions
+START_TSLE = ['aa:Met', 'aa:Leu']
+STARTS = ['ATG', 'CTG', 'TTG']
+STOP_TSLE = ['aa:TERM']
+PTC_TSLE = ['aa:Sec']
 
 class Mtype(Enum):
     PROG = (GREEN, "PROGRESS")
@@ -48,6 +60,15 @@ def write_lst(lst, fn):
         for x in lst:
             fh.write(f'{x}\n')
 
+def check_dir(d):
+    if not os.path.exists(d):
+        os.makedirs(d)
+
+def store_params(args, fn):
+    with open(fn, 'w') as f:
+        json.dump(args.__dict__, f, indent=2)
+
+# custom classes
 class gLine():
     def __init__(self, ln, format):
         if ln is None:
@@ -106,3 +127,93 @@ class gLine():
         temp = [f'{x[0]}{kv_sep}{x[1]}' for x in temp]
         gStr += ';'.join(temp) + '\n'
         return gStr
+
+class gFeat():
+    def __init__(self, row: pd.Series, att_sep: str, schema: list):
+        self.ctg = row['ctg']
+        self.src = row['src']
+        self.type = row['type']
+        self.start = int(row['start'])
+        self.end = int(row['end'])
+        self.score = int(row['score']) if row['score'] != '.' else None
+        self.strand = row['strand']
+        self.frame = int(row['frame']) if row['frame'] != '.' else None
+        self.att_tbl = self.att2dict(row['attributes'], att_sep)
+        self.children = set()
+
+        # need flexibility
+        self.fid = self.att_tbl[schema[0]] if schema[0] in self.att_tbl else None
+        self.parent = self.att_tbl[schema[1]] if schema[1] in self.att_tbl else None
+        self.ftype = self.att_tbl[schema[2]] if schema[2] in self.att_tbl else None
+        self.chains = []
+        self.sorted = []
+    
+    def att2dict(self, s, sep) -> dict:
+        fields = s.strip().split(';')
+        att = dict()
+        for x in fields:
+            temp = x.strip().split(sep)
+            if len(temp) < 2: continue
+            k = temp[0]
+            v = temp[1]
+            att[k] = v
+        return att
+
+    # tx-specific fns
+    def is_chain_init(self) -> bool:
+        return len(self.chains) > 0
+    
+    def init_chain(self) -> bool:
+        self.chains.append([])
+        self.chains.append([])
+        self.sorted.append(False)
+        self.sorted.append(False)
+        assert len(self.chains) == 2
+    
+    def print_chain(self, i):
+        coords = [(x.start, x.end) for x in self.chains[i]]
+        print(' '.join([f'({x}, {y})' for x, y in coords]))
+    
+    def append2chain(self, i, el):
+        self.chains[i].append(el)
+        self.sorted[i] = False
+    
+    def sort_chain(self, i):
+        if self.strand == '+':
+            self.chains[i] = sorted(self.chains[i], \
+                                key=lambda x: x.start, reverse=False)
+        else:
+            self.chains[i] = sorted(self.chains[i], \
+                                key=lambda x: x.end, reverse=True)
+        self.sorted[i] = True
+    
+    def set_chain(self, i, chain):
+        self.chains[i] = chain
+        self.sorted[i] = False
+    
+    def get_chain_lens(self):
+        return len(self.chains[0]), len(self.chains[1])
+    
+    # gene-specific fns
+    def add_child(self, el):
+        self.children.add(el)
+    
+    def has_child(self, el) -> bool:
+        return el in self.children
+    
+    def __eq__(self, o) -> bool:
+        if self.start != o.start or self.end != o.end: return False
+        if self.strand != o.strand: return False
+        if self.is_chain_init() and o.is_chain_init():
+            for i in range(2):
+                if not o.sorted[i] or not self.sorted[i]: print("can't perform eq on unsorted chains")
+                if len(self.chains[i]) != len(o.chains[i]): return False
+                for j in range(len(self.chains[i])):
+                    if self.chains[0][j].start != o.chains[0][j].start or \
+                        self.chains[0][j].end != o.chains[0][j].end: return False
+        return True
+    
+class gAn():
+    def __init__(self, gene_l: list, tx_l: list):
+        self.genes = {x.fid: x for x in gene_l}
+        self.txes = {x.fid: x for x in tx_l}

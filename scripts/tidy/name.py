@@ -18,9 +18,11 @@ def main(args):
                 else:
                     gene_ctr += 1
                 old_gid = ln_o.attributes['ID']
-                new_gid = f'{args.prefix}_{ln_o.ctg[:args.char_limit]}_{gene_ctr}'
+                if args.char_limit != -1:
+                    new_gid = f'{args.prefix}_{ln_o.ctg[:args.char_limit].lower()}_{gene_ctr}'
+                else:
+                    new_gid = f'{args.prefix}_{ln_o.ctg.lower()}_{gene_ctr}'
                 ln_o.attributes['ID'] = new_gid
-                ln_o.attributes['copy_num_ID'] = f'{new_gid}_{ln_o.attributes['extra_copy_number']}'
                 assert old_gid not in isoform_ctr
                 isoform_ctr[old_gid] = 1
                 old2new_gene[old_gid] = new_gid
