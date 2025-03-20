@@ -8,6 +8,8 @@ import os
 import json
 import pyfastx
 from tqdm import tqdm
+import copy
+from Bio.Seq import Seq
 
 RED = '\033[31m'
 GREEN = '\033[32m'
@@ -73,7 +75,7 @@ def load_lst(fn) -> list:
 def write_tup_lst(lst, fn):
     with open(fn, 'w') as fh:
         for x in lst:
-            fh.write(f'{",".join(x)}\n')
+            fh.write(f'{",".join(map(str, x))}\n')
 
 def check_dir(d):
     if not os.path.exists(d):

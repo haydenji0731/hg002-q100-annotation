@@ -48,6 +48,7 @@ def write_filtered(in_fn, in_format, out_fn, out_format, remove_genes, remove_tx
     isoform_ctr = dict()
     old2new_tx = dict()
     tsle = dict()
+    rslippage = set()
     with open(in_fn, 'r') as in_fh:
         for ln in in_fh:
             if ln[0] == '#': continue
@@ -101,12 +102,16 @@ def write_filtered(in_fn, in_format, out_fn, out_format, remove_genes, remove_tx
                     assert excpt[:2] == 'aa' # sanity check
                     if temp['Parent'] not in tsle:
                         tsle[temp['Parent']] = (pos, excpt)
+                if 'exception' in ln_o.attributes and ln_o.attributes['exception'] == 'ribosomal slippage':
+                    rslippage.add(temp['Parent'])
+
                 pid = old2new_tx[temp['Parent']]
                 temp['Parent'] = pid
                 ln_o.attributes = temp
                 out_fh.write(ln_o.to_gStr(out_format))
+
     out_fh.close()
-    return tsle
+    return tsle, rslippage
 
 def main(in_fn, out_dir, in_format, out_format):
     remove_genes = []
@@ -116,11 +121,16 @@ def main(in_fn, out_dir, in_format, out_format):
     remove_genes, remove_txes = sift(in_fn, in_format, gene_filters, tx_filters)
     print(tmessage(f'{len(remove_genes)} genes to remove', Mtype.PROG))
     print(tmessage(f'{len(remove_txes)} transcripts to remove', Mtype.PROG))
-    tsle = write_filtered(in_fn, in_format, os.path.join(out_dir, 'ref.gff'), out_format, remove_genes, remove_txes)
+    tsle, rslippage = write_filtered(in_fn, in_format, os.path.join(out_dir, 'ref.gff'), out_format, remove_genes, remove_txes)
     with open(os.path.join(out_dir, 'ref.tsl.except'), 'w') as fh:
         fh.write('transcript_id,pos,exception\n')
         for tid in tsle:
             fh.write(f'{tid},{":".join(tsle[tid][0])},{tsle[tid][1]}\n')
+    
+    with open(os.path.join(out_dir, 'ref.rslippage.except'), 'w') as fh:
+        fh.write('transcript_id\n')
+        for tid in rslippage:
+            fh.write(f'{tid}\n')
 
     print(tmessage(f'finished cleaning', Mtype.PROG))
 

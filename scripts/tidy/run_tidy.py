@@ -46,7 +46,8 @@ def parse():
     parser_sweep.add_argument('-i', '--in-file', type=str, help="", required=True)
     parser_sweep.add_argument('-w', '--window', type=int, help="", required=False, default=90)
     parser_sweep.add_argument('-n', '--nucl-file', type=str, help="", required=True)
-    
+    parser_sweep.add_argument('-r', '--ref-file', type=str, help="", required=True)
+    parser_sweep.add_argument('-e', '--slip-except', type=str, help="", required=False)
     args = parser.parse_args()
     return args
 

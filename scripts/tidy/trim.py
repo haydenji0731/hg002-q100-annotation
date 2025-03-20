@@ -1,7 +1,5 @@
 from utils import *
-from Bio.Seq import Seq
 import psa
-import copy
 
 def calc_clen(x) -> int:
     clen = 0
@@ -47,7 +45,7 @@ def check_cds_integrity(cds_chain):
             break
     return is_valid
 
-def shift_cds(tx, l, side):
+def shorten_cds(tx, l, side):
     new_cds_chain = copy.deepcopy(tx.chains[1])
     remaining = l
     if tx.strand == '+':
@@ -120,7 +118,7 @@ def main(args):
             cseq = cfa[tid].seq
             if cseq[:3] in START_CODONS:
                 start_shifted.append((tid, str(mod)))
-                shifted_cds_chain = shift_cds(tx, mod, 1) # trim at the end
+                shifted_cds_chain = shorten_cds(tx, mod, 1) # trim at the end
                 tx.chains[1] = shifted_cds_chain
                 tx.sort_chain(1)
                 tx.att_tbl['manual'] = 'True'
@@ -131,7 +129,7 @@ def main(args):
                     tx.att_tbl['manual'] = 'False'
                 else:
                     aln_shifted.append((tid, str(mod), str(side), str(nident_start), str(nident_end)))
-                    shifted_cds_chain = shift_cds(tx, mod, side)
+                    shifted_cds_chain = shorten_cds(tx, mod, side)
                     tx.chains[1] = shifted_cds_chain
                     tx.sort_chain(1)
                     tx.att_tbl['manual'] = 'True'
