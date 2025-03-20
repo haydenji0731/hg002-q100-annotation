@@ -10,12 +10,12 @@ def parse():
     parser.add_argument('--fmt', type=str, help="", required=False, \
                     default="gff", choices=['gff', 'gtf'])
     parser.add_argument('-o', '--out-dir', type=str, help="", required=True)
+    parser.add_argument('-i', '--in-file', type=str, help="", required=True)
 
     subparsers = parser.add_subparsers(dest='module', help="")
 
     # assumes a sorted input gff file
     parser_name = subparsers.add_parser('name', help="")
-    parser_name.add_argument('-i', '--in-file', type=str, help="", required=True)
     parser_name.add_argument('-fp', '--file-prefix', type=str, help="", \
                             default="renamed", required=False)
     parser_name.add_argument('-ip', '--id-prefix', type=str, help="", required=True)
@@ -23,19 +23,16 @@ def parse():
     
 
     parser_build = subparsers.add_parser('build', help="")
-    parser_build.add_argument('-i', '--in-file', type=str, help="", required=True)
     parser_build.add_argument('--btype', action='store_true', default=False, required=False, help="")
     parser_build.add_argument('--schema', type=lambda s: s.split(','), required=False, \
                 default=['ID', 'Parent', 'transcript_biotype'])
     
     parser_trim = subparsers.add_parser('trim', help="")
-    parser_trim.add_argument('-i', '--in-file', type=str, help="", required=True)
     parser_trim.add_argument('-c', '--cds-file', type=str, help="", required=True)
     parser_trim.add_argument('-r', '--ref-file', type=str, help="", required=True)
     parser_trim.add_argument('-d', '--min-diff', type=float, help="", required=False, default=5.0)
 
     parser_label = subparsers.add_parser('label', help="")
-    parser_label.add_argument('-i', '--in-file', type=str, help="", required=True)
     parser_label.add_argument('-c', '--cds-file', type=str, help="", required=True)
     parser_label.add_argument('-r', '--ref-file', type=str, help="", required=True)
     parser_label.add_argument('-p', '--prot-file', type=str, help="", required=True)
@@ -43,11 +40,12 @@ def parse():
     parser_label.add_argument('-m', '--mane-file', type=str, help="mane select", required=False)
 
     parser_sweep = subparsers.add_parser('sweep', help="")
-    parser_sweep.add_argument('-i', '--in-file', type=str, help="", required=True)
-    parser_sweep.add_argument('-w', '--window', type=int, help="", required=False, default=90)
+    parser_sweep.add_argument('-w', '--window', type=int, help="", required=False, default=-1)
     parser_sweep.add_argument('-n', '--nucl-file', type=str, help="", required=True)
     parser_sweep.add_argument('-r', '--ref-file', type=str, help="", required=True)
     parser_sweep.add_argument('-e', '--slip-except', type=str, help="", required=False)
+    parser_sweep.add_argument('--find-alt-orfs', action='store_true', default=False, required=False, help="")
+    
     args = parser.parse_args()
     return args
 

@@ -1,4 +1,5 @@
 from utils import *
+import orfipy_core
 
 def extend_upstream(s, cds_start, w) -> int:
     wd_end = max(0, cds_start - w) # respect 5' end
@@ -89,28 +90,98 @@ def find_alt_start_stop(tx, cds_coords, nseq, w):
             end_pos = cds_coords[1]
         if start_pos == cds_coords[0] and end_pos == cds_coords[1]: return False, None
         define_cds(start_pos, end_pos, tx, len(nseq))
-        if nseq[start_pos:start_pos + 3] in START_CODONS and nseq[end_pos - 3:end_pos] in STOP_CODONS:
+
+        if nseq[start_pos:start_pos + 3] in START_CODONS:
+            tx.att_tbl.pop('missing_start_codon', None)
+            valid_start = True
+        else:
+            valid_start = False
+        if nseq[end_pos - 3:end_pos] in STOP_CODONS:
+            tx.att_tbl.pop('missing_stop_codon', None)
+            valid_stop = True
+        else:
+            valid_stop = False
+        if valid_start and valid_stop:
             tx.att_tbl['valid_ORF'] = 'True'
+
         tx.att_tbl['manual'] = 'True'
     return True, (tx.fid, start_pos, end_pos, cds_coords[0], cds_coords[1])
 
-# TODO: implement
-def is_orf_contained(nseq, cds_coords, ref_pseq):
+def check_containment(tx, nseq, cds_coords, rseq):
+    contained, coords = is_orf_contained(nseq, cds_coords, rseq)
+    if contained:
+        _, _, nstart, nend = coords
+        define_cds(nstart, nend, tx, len(nseq))
+        if nseq[nstart:nstart + 3] in START_CODONS:
+            tx.att_tbl.pop('missing_start_codon', None)
+            valid_start = True
+        else:
+            valid_start = False
+        if nseq[nend - 3:nend] in STOP_CODONS:
+            tx.att_tbl.pop('missing_stop_codon', None)
+            valid_stop = True
+        else:
+            valid_stop = False
+        if valid_start and valid_stop:
+            tx.att_tbl['valid_ORF'] = 'True'
+        else:
+            tx.att_tbl['valid_ORF'] = 'False'
+        tx.att_tbl['manual'] = 'True'
+        return contained, (tx.fid, nstart, nend, cds_coords[0], cds_coords[1])
+    return contained, None
+
+def is_orf_contained(nseq, cds_coords, rseq):
     cds_start, cds_end = cds_coords
     assert (cds_end - cds_start) % 3 == 0
     pseq = Seq.translate(nseq[cds_start:cds_end])
-    ref_pseq_wstop = ref_pseq + '*'
-    if ref_pseq_wstop == pseq:
+    rseq_wstop = rseq + '*'
+    if rseq_wstop == pseq or rseq == pseq:
         return False, None
-    if ref_pseq in pseq:
-        start = pseq.find(ref_pseq)
-        end = start + len(ref_pseq)
-        return True, (start, end)
+    # if rseq in pseq, then it's simply a longer protein
+    if rseq_wstop in pseq:
+        pstart = pseq.find(rseq_wstop)
+        pend = pstart + len(rseq_wstop)
+        nstart = 3 * pstart + cds_start
+        nend = 3 * pend + cds_start
+        return True, (pstart, pend, nstart, nend)
     return False, None
 
-# TODO: implement
-def find_alt_orf():
-    return
+# NOTE: useful when hg38 reference is provided
+def has_alt_orf(nseq, rseq, cds_coords, ratio, min_match):
+    rlen = len(rseq) * 3
+    rseq_wstop = rseq + '*' # NOTE: it's not guaranteed that rseq ends with a valid stop
+    for start, stop, _, _ in orfipy_core.orfs(nseq, minlen=ratio * rlen, \
+                                                    maxlen=rlen, strand='f', \
+                                                    starts=START_CODONS, stops=STOP_CODONS):
+        if cds_coords[0] == start and cds_coords[1] == stop + 3: continue
+        alt_cseq = nseq[start:stop + 3]
+        tsl_alt_cseq = Seq.translate(alt_cseq)
+
+        if tsl_alt_cseq == rseq_wstop or \
+            (tsl_alt_cseq[:min_match] == rseq_wstop[:min_match] and \
+            tsl_alt_cseq[-min_match:] == rseq_wstop[-min_match:]):
+            return True, (start, stop + 3)
+    return False, None
+
+def find_alt_orf(tx, nseq, cds_coords, rseq, ratio=0.9, min_match=10):
+    has_ao, coords = has_alt_orf(nseq, rseq, cds_coords, ratio, min_match)
+    if has_ao:
+        define_cds(coords[0], coords[1], tx, len(nseq))
+        if nseq[coords[0]:coords[0] + 3] in START_CODONS:
+            tx.att_tbl.pop('missing_start_codon', None)
+            valid_start = True
+        else:
+            valid_start = False
+        if nseq[coords[1] - 3:coords[1]] in STOP_CODONS:
+            tx.att_tbl.pop('missing_stop_codon', None)
+            valid_stop = True
+        else:
+            valid_stop = False
+        if valid_start and valid_stop:
+            tx.att_tbl['valid_ORF'] = 'True'
+        tx.att_tbl['manual'] = 'True'
+        return True, (tx.fid, coords[0], coords[1], cds_coords[0], cds_coords[1])
+    return False, None
 
 def load_cds_coords(fn) -> dict:
     cds_coords_tbl = dict()
@@ -132,7 +203,9 @@ def main(args):
         print(tmessage("input file must a pickle object", Mtype.ERR))
         sys.exit(-1)
     
-    if args.window % 3 != 0:
+    wd = args.window if args.window == -1 else 300000000000
+
+    if wd % 3 != 0:
         print(tmessage("extend window size must be divisible by 3", Mtype.ERR))
         sys.exit(-1)
     
@@ -154,26 +227,60 @@ def main(args):
     # assert len(cds_coords_tbl) == len(gan.txes) # sanity check
 
     print(tmessage("finding alternative start and/or stop codons", Mtype.PROG))
-    new_cdses = []
+    alt_start_stop = []
     for tid in tqdm(gan.txes):
         tx = gan.txes[tid]
-        is_new_cds, coords = find_alt_start_stop(tx, cds_coords_tbl[tid], nfa[tid].seq, args.window)
-        if is_new_cds:
-            new_cdses.append(coords) # tid, new_start, new_end, old_start, old_end
+        is_alt_found, coords = find_alt_start_stop(tx, cds_coords_tbl[tid], nfa[tid].seq, wd)
+        if is_alt_found:
+            alt_start_stop.append(coords) # tid, new_start, new_end, old_start, old_end
             cds_coords_tbl[tid] = (coords[1], coords[2])
-    write_tup_lst(new_cdses, os.path.join(args.out_dir, 'start_stop_adj.csv'))
-    print(tmessage(f"alternative start and/or stop found for {len(new_cdses)} transcripts", Mtype.PROG))
+    write_tup_lst(alt_start_stop, os.path.join(args.out_dir, 'alt_start_stop.csv'))
+    print(tmessage(f"alternative start and/or stop found for {len(alt_start_stop)} transcripts", Mtype.PROG))
 
+    # strategies to improve pident / resemblance with reference prots
+    # 1. check containment
+    # 2. check alt ORFs (optional)
     print(tmessage("checking reference orf containments", Mtype.PROG))
+    contained = []
     for tid in tqdm(gan.txes):
         tx = gan.txes[tid]
         if tx.att_tbl['origin_ID'] in rslippage_tids: continue
-        contained, coords = is_orf_contained(nfa[tid].seq, cds_coords_tbl[tid], rfa[tx.att_tbl['origin_ID']].seq)
-        if contained:
-            # TODO: handle containment by defining a new CDS like above
-            continue
-    
-    
+        is_contained, coords = check_containment(tx, nfa[tid].seq, cds_coords_tbl[tid], \
+                                            rfa[tx.att_tbl['origin_ID']].seq)
+        if is_contained:
+            contained.append(coords)
+            cds_coords_tbl[tid] = (coords[1], coords[2])
+    write_tup_lst(contained, os.path.join(args.out_dir, 'contained.csv'))
+    print(tmessage(f"{len(contained)} containments detected and addressed", Mtype.PROG))
 
-        
+    if args.find_alt_orfs:
+        alt_orfs = []
+        for tid in tqdm(gan.txes):
+            tx = gan.txes[tid]
+            if tx.att_tbl['origin_ID'] in rslippage_tids: continue
+            ao_found, coords = find_alt_orf(tid, nfa[tid].seq, rfa[tx.att_tbl['origin_ID']].seq, \
+                                        cds_coords_tbl[tid], 0.9, 10)
+            if ao_found:
+                alt_orfs.append(coords)
+                cds_coords_tbl[tid] = (coords[1], coords[2])
+        write_tup_lst(alt_orfs, os.path.join(args.out_dir, 'alt_orfs.csv'))
+        print(tmessage(f"{len(alt_orfs)} alternative orfs deteced and addressed", Mtype.PROG))
+    
+    # update matches_ref field
+    for tid in tqdm(gan.txes):
+        tx = gan.txes[tid]
+        if tx.att_tbl['origin_ID'] in rslippage_tids: continue
+        nseq = nfa[tid].seq
+        cds_coords = cds_coords_tbl[tid]
+        tsl_cseq = Seq.translate(nseq[cds_coords[0]:cds_coords[1]])
+        if tsl_cseq[-1] == '*': tsl_cseq = tsl_cseq[:-1]
+        rseq = rfa[tx.att_tbl['origin_ID']].seq
+        if tsl_cseq == rseq:
+            tx.att_tbl['matches_ref_protein'] = 'True'
+    
+    print(tmessage(f"saving results", Mtype.PROG))
+    s = gan.to_str(args.fmt)
 
+    with open(os.path.join(args.out_dir, f'swept.{args.fmt}'), 'w') as fh: fh.write(s)
+    save_pth = os.path.join(args.out_dir, 'swept.pkl')
+    with open(save_pth, 'wb') as f: pickle.dump(gan, f)
