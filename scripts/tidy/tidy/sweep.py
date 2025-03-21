@@ -1,4 +1,4 @@
-from utils import *
+from tidy.utils import *
 import orfipy_core
 
 def extend_upstream(s, cds_start, w) -> int:
@@ -203,7 +203,7 @@ def main(args):
         print(tmessage("input file must a pickle object", Mtype.ERR))
         sys.exit(-1)
     
-    wd = args.window if args.window == -1 else 300000000000
+    wd = args.window if args.window != -1 else 300000000000
 
     if wd % 3 != 0:
         print(tmessage("extend window size must be divisible by 3", Mtype.ERR))
@@ -244,7 +244,9 @@ def main(args):
     contained = []
     for tid in tqdm(gan.txes):
         tx = gan.txes[tid]
-        if tx.att_tbl['origin_ID'] in rslippage_tids: continue
+        if tx.att_tbl['origin_ID'] in rslippage_tids: 
+            tx.att_tbl['exception'] = 'ribosomal slippage'
+            continue
         is_contained, coords = check_containment(tx, nfa[tid].seq, cds_coords_tbl[tid], \
                                             rfa[tx.att_tbl['origin_ID']].seq)
         if is_contained:
@@ -266,7 +268,7 @@ def main(args):
         write_tup_lst(alt_orfs, os.path.join(args.out_dir, 'alt_orfs.csv'))
         print(tmessage(f"{len(alt_orfs)} alternative orfs deteced and addressed", Mtype.PROG))
     
-    # update matches_ref field
+    print(tmessage("updating ref protein match and valid_ORFs tags", Mtype.PROG))
     for tid in tqdm(gan.txes):
         tx = gan.txes[tid]
         if tx.att_tbl['origin_ID'] in rslippage_tids: continue
@@ -277,6 +279,15 @@ def main(args):
         rseq = rfa[tx.att_tbl['origin_ID']].seq
         if tsl_cseq == rseq:
             tx.att_tbl['matches_ref_protein'] = 'True'
+    
+    for gid in tqdm(gan.genes):
+        gene = gan.genes[gid]
+        vo_ctr = 0
+        for tid in gene.children:
+            tx = gan.txes[tid]
+            if tx.att_tbl['valid_ORF'] == 'True':
+                vo_ctr += 1
+        gene.att_tbl['valid_ORFs'] = vo_ctr
     
     print(tmessage(f"saving results", Mtype.PROG))
     s = gan.to_str(args.fmt)

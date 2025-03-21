@@ -237,8 +237,11 @@ class gFeat():
         s = f'{self.ctg}\tLiftoff\t{self.type}\t{self.start}\t{self.end}\t'
         frame = '.' if self.frame is None else self.frame
         s += f'.\t{self.strand}\t{frame}\t'
+        if 'ID' in self.att_tbl:
+            s += f'ID{sep}{self.att_tbl["ID"]};'
         for k in self.att_tbl:
-            s += f'{k}{sep}{self.att_tbl[k]};'
+            if k != 'ID':
+                s += f'{k}{sep}{self.att_tbl[k]};'
         return s
     
 class gAn():

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-from utils import *
-import name, build, trim, label, sweep
+from tidy.utils import *
+from tidy import name, build, trim, label, sweep
 
 def parse():
     parser = argparse.ArgumentParser(description="")

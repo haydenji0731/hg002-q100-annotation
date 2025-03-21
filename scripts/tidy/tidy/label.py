@@ -1,4 +1,5 @@
-from utils import *
+from tidy.utils import *
+import pickle
 
 def is_valid_stop(s) -> bool:
     last_codon = s[-3:].upper()
@@ -19,7 +20,7 @@ def load_tsle(fn) -> dict:
         tsle[row['transcript_id']] = row['exception']
     return tsle
 
-def check_start_and_stop(tx, tid, cseq, tsle):
+def check_start_and_stop(tx, cseq, tsle):
     val_start = is_valid_start(cseq)
     val_stop = is_valid_stop(cseq)
     if val_start and val_stop:
@@ -28,10 +29,15 @@ def check_start_and_stop(tx, tid, cseq, tsle):
         tx.att_tbl.pop('missing_stop_codon', None)
         return
     else:
-        if tid in tsle:
-            if not val_start and tsle[tid] in START_TSLE: val_start = True
-            if not val_stop and tsle[tid] in STOP_TSLE: val_stop = True
-            if val_start and val_stop: 
+        ori_id = tx.att_tbl['origin_ID']
+        if ori_id in tsle:
+            if not val_start and tsle[ori_id] in START_TSLE:
+                tx.att_tbl['exception'] = tsle[ori_id]
+                val_start = True
+            if not val_stop and tsle[ori_id] in STOP_TSLE: 
+                tx.att_tbl['exception'] = tsle[ori_id]
+                val_stop = True
+            if val_start and val_stop:
                 tx.att_tbl['valid_ORF'] = 'True'
                 tx.att_tbl.pop('missing_start_codon', None)
                 tx.att_tbl.pop('missing_stop_codon', None)
@@ -43,12 +49,16 @@ def check_start_and_stop(tx, tid, cseq, tsle):
         tx.att_tbl['valid_ORF'] = 'False'
 
 # TODO: check if this is correct
-def check_ptc(tx, tid, pseq, tsle) -> bool:
+def check_ptc(tx, pseq, tsle) -> bool:
+    ori_id = tx.att_tbl['origin_ID']
     if '.' in pseq or '*' in pseq:
-        if tid in tsle and tsle[tid] not in PTC_TSLE:
-            tx.att_tbl['valid_ORF'] = 'False'; return True
-        tx.att_tbl['valid_ORF'] = 'False'
-        return True
+        if ori_id in tsle:
+            if tsle[ori_id] in PTC_TSLE:
+                tx.att_tbl['exception'] = tsle[ori_id]
+                tx.att_tbl['valid_ORF'] = 'True'; return False
+            else:
+                tx.att_tbl['valid_ORF'] = 'False'; return True
+        tx.att_tbl['valid_ORF'] = 'False'; return True
     return False
 
 
@@ -85,8 +95,8 @@ def main(args):
     print(tmessage("checking ORF validity, MANE status, and reference protein match states", Mtype.PROG))
     for tid in tqdm(gan.txes):
         tx = gan.txes[tid]
-        check_start_and_stop(tx, tid, cfa[tid].seq, tsle)
-        has_ptc = check_ptc(tx, tid, pfa[tid].seq, tsle)
+        check_start_and_stop(tx, cfa[tid].seq, tsle)
+        has_ptc = check_ptc(tx, pfa[tid].seq, tsle)
         if has_ptc:
             tx.att_tbl['inframe_stop_codon'] = 'True'
         else:

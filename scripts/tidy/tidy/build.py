@@ -1,11 +1,11 @@
-from utils import *
+from tidy.utils import *
 
 def create_gfeat(args):
     row, att_sep, schema = args
     return gFeat(row, att_sep, schema)
 
 def load_gan(args):
-    if args.ext.lower() == 'gff':
+    if args.fmt.lower() == 'gff':
         att_sep = "="
     else:
         att_sep = " "
@@ -49,6 +49,30 @@ def load_gan(args):
 
     return cds_feats, pc_exon_feats, pc_tx_feats, pc_gene_feats
 
+def add_exon_ids(e_chain, parent):
+    ctr = 1
+    for e in e_chain:
+        e.att_tbl['exon_number'] = ctr
+        e.att_tbl['ID'] = f'{parent}-exon-{ctr}'
+        ctr += 1
+
+def add_cds_ids(c_chain, e_chain, parent):
+    # find starting exon
+    starting_cds = c_chain[0]
+    starting_ei = -1
+    for i, e in enumerate(e_chain):
+        if starting_cds.start >= e.start and starting_cds.end <= e.end:
+            starting_ei = i
+            break
+    assert starting_ei != -1
+    i += 1
+    ctr = 1
+    for c in c_chain:
+        c.att_tbl['exon_number'] = i
+        c.att_tbl['ID'] = f'{parent}-cds-{ctr}'
+        i += 1
+        ctr += 1
+
 def build_gan(cdses, exons, txes, genes) -> gAn:
     print(tmessage(f"building gan", Mtype.PROG))
     gan = gAn(genes, txes)
@@ -75,6 +99,9 @@ def build_gan(cdses, exons, txes, genes) -> gAn:
         # also sort chains
         gan.txes[x.fid].sort_chain(0)
         gan.txes[x.fid].sort_chain(1)
+        # add exon and cds IDs
+        add_exon_ids(x.chains[0], x.fid)
+        add_cds_ids(x.chains[1], x.chains[1], x.fid)
     
     return gan
     
@@ -82,5 +109,9 @@ def main(args):
 
     cdses, exons, txes, genes = load_gan(args)
     gan = build_gan(cdses, exons, txes, genes)
+
+    s = gan.to_str(args.fmt)
+    with open(os.path.join(args.out_dir, f'in.coding.{args.fmt}'), 'w') as fh: fh.write(s)
+
     save_pth = os.path.join(args.out_dir, 'in.coding.pkl')
     with open(save_pth, 'wb') as f: pickle.dump(gan, f)

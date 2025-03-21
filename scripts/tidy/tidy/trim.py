@@ -1,5 +1,5 @@
-from utils import *
-import psa
+from tidy.utils import *
+from tidy import psa
 
 def calc_clen(x) -> int:
     clen = 0
@@ -138,7 +138,8 @@ def main(args):
 
     print(tmessage(f"{ctr} coding transcripts with CDS len indivisible by 3", Mtype.PROG))
     print(tmessage(f"{len(start_shifted) + len(aln_shifted)} / {ctr} trimmed", Mtype.PROG))
-    print(tmessage(f"{len(manual)} / {ctr} needs manual inspection", Mtype.PROG))
+    if len(manual) > 0:
+        print(tmessage(f"{len(manual)} needs manual inspection", Mtype.PROG))
 
 
     print(tmessage(f"saving results", Mtype.PROG))

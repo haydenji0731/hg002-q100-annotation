@@ -1,12 +1,12 @@
-from utils import *
+from tidy.utils import *
 
 def main(args):
     prev_ctg = None
     isoform_ctr = dict()
     old2new_gene = dict()
     old2new_tx = dict()
-    out_fh = open(args.out_file, 'w')
-    file_format = args.ext.lower()
+    out_fh = open(os.path.join(args.out_dir, f'{args.file_prefix}.{args.fmt.lower()}'), 'w')
+    file_format = args.fmt.lower()
     with open(args.in_file, 'r') as fh:
         for ln in fh:
             if ln[0] == '#': continue
@@ -19,9 +19,9 @@ def main(args):
                     gene_ctr += 1
                 old_gid = ln_o.attributes['ID']
                 if args.char_limit != -1:
-                    new_gid = f'{args.prefix}_{ln_o.ctg[:args.char_limit].lower()}_{gene_ctr}'
+                    new_gid = f'{args.id_prefix}_{ln_o.ctg[:args.char_limit].lower()}_{gene_ctr}'
                 else:
-                    new_gid = f'{args.prefix}_{ln_o.ctg.lower().replace("x", "X").replace("y", "Y")}_{gene_ctr}'
+                    new_gid = f'{args.id_prefix}_{ln_o.ctg.lower().replace("x", "X").replace("y", "Y")}_{gene_ctr}'
                 ln_o.attributes['ID'] = new_gid
                 assert old_gid not in isoform_ctr
                 isoform_ctr[old_gid] = 1
