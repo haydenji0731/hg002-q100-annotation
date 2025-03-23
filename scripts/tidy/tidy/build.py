@@ -56,7 +56,7 @@ def add_exon_ids(e_chain, parent):
         e.att_tbl['ID'] = f'{parent}-exon-{ctr}'
         ctr += 1
 
-def add_cds_ids(c_chain, e_chain, parent):
+def add_cds_enumber(c_chain, e_chain):
     # find starting exon
     starting_cds = c_chain[0]
     starting_ei = -1
@@ -65,15 +65,19 @@ def add_cds_ids(c_chain, e_chain, parent):
             starting_ei = i
             break
     assert starting_ei != -1
-    i += 1
+    starting_ei += 1 # switch to 1-based index
+    for c in c_chain:
+        assert starting_ei <= len(e_chain) + 1
+        c.att_tbl['exon_number'] = starting_ei
+        starting_ei += 1
+
+def add_cds_ids(c_chain, parent):
     ctr = 1
     for c in c_chain:
-        c.att_tbl['exon_number'] = i
         c.att_tbl['ID'] = f'{parent}-cds-{ctr}'
-        i += 1
         ctr += 1
 
-def build_gan(cdses, exons, txes, genes) -> gAn:
+def build_gan(cdses, exons, txes, genes, add_id) -> gAn:
     print(tmessage(f"building gan", Mtype.PROG))
     gan = gAn(genes, txes)
 
@@ -99,19 +103,43 @@ def build_gan(cdses, exons, txes, genes) -> gAn:
         # also sort chains
         gan.txes[x.fid].sort_chain(0)
         gan.txes[x.fid].sort_chain(1)
-        # add exon and cds IDs
-        add_exon_ids(x.chains[0], x.fid)
-        add_cds_ids(x.chains[1], x.chains[1], x.fid)
+        if add_id:
+            # add exon and cds IDs
+            add_exon_ids(x.chains[0], x.fid)
+            add_cds_ids(x.chains[1], x.fid)
+        add_cds_enumber(x.chains[1], x.chains[0])
     
     return gan
-    
+
+def write_rest(in_fn, out_fn, gan, fmt):
+    out_fh = open(out_fn, 'w')
+    with open(in_fn, 'r') as in_fh:
+        for ln in in_fh:
+            if ln[0] == '#': continue
+            gline = gLine(ln.strip(), fmt)
+            if gline.feature == 'gene':
+                gid = gline.attributes['ID']
+                if gid in gan.genes: continue
+                out_fh.write(ln)
+            elif gline.feature == 'transcript':
+                tid = gline.attributes['ID']
+                if tid in gan.txes: continue
+                out_fh.write(ln)
+            else:
+                pid = gline.attributes['Parent']
+                if pid in gan.txes: continue
+                out_fh.write(ln)
+    out_fh.close()
+            
 def main(args):
 
     cdses, exons, txes, genes = load_gan(args)
-    gan = build_gan(cdses, exons, txes, genes)
+    gan = build_gan(cdses, exons, txes, genes, args.add_id)
 
     s = gan.to_str(args.fmt)
     with open(os.path.join(args.out_dir, f'in.coding.{args.fmt}'), 'w') as fh: fh.write(s)
 
     save_pth = os.path.join(args.out_dir, 'in.coding.pkl')
     with open(save_pth, 'wb') as f: pickle.dump(gan, f)
+
+    write_rest(args.in_file, os.path.join(args.out_dir, f'rest.{args.fmt}'), gan, args.fmt.lower())

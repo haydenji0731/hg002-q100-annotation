@@ -1,5 +1,0 @@
-orfipy
-pandas
-biopython
-pyfastx
-setuptools

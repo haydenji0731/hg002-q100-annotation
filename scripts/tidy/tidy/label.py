@@ -102,7 +102,7 @@ def main(args):
         else:
             tx.att_tbl.pop('inframe_stop_codon', None)
 
-        if tid in mane_tids:
+        if tx.att_tbl['origin_ID'] in mane_tids:
             tx.att_tbl['tag'] = "MANE Select"
         if pfa[tid].seq == rfa[tx.att_tbl['origin_ID']].seq:
             tx.att_tbl['matches_ref_protein'] = 'True'

@@ -1,2 +1,0 @@
-[console_scripts]
-tidy = tidy.run_tidy:main

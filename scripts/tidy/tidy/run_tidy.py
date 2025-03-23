@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from tidy.utils import *
-from tidy import name, build, trim, label, sweep
+from tidy import name, build, trim, label, sweep, swap
 
 def parse():
     parser = argparse.ArgumentParser(description="")
@@ -24,6 +24,7 @@ def parse():
 
     parser_build = subparsers.add_parser('build', help="")
     parser_build.add_argument('--btype', action='store_true', default=False, required=False, help="")
+    parser_build.add_argument('--add-id', action='store_true', default=False, required=False, help="")
     parser_build.add_argument('--schema', type=lambda s: s.split(','), required=False, \
                 default=['ID', 'Parent', 'transcript_biotype'])
     
@@ -45,7 +46,16 @@ def parse():
     parser_sweep.add_argument('-r', '--ref-file', type=str, help="", required=True)
     parser_sweep.add_argument('-e', '--slip-except', type=str, help="", required=False)
     parser_sweep.add_argument('--find-alt-orfs', action='store_true', default=False, required=False, help="")
-    
+
+    parser_swap = subparsers.add_parser('swap', help="")
+    parser_swap.add_argument('-i2', '--input-2', type=str, help="", required=True)
+    parser_swap.add_argument('-m', '--map-file', type=str, help="", required=True)
+    parser_swap.add_argument('--refseq', action='store_true', default=False, required=False, help="")
+    parser_swap.add_argument('--note', type=str, default=None, required=False, help="")
+
+    parser_merge = subparsers.add_parser('merge', help="")
+    parser_merge.add_argument('-i2', '--input-2', type=str, help="", required=True)
+
     args = parser.parse_args()
     return args
 
@@ -78,6 +88,11 @@ def main():
         param_fn = os.path.join(args.out_dir, "sweep_params.json")
         store_params(args, param_fn)
         sweep.main(args)
+    elif args.module == 'swap':
+        print(tmessage(f'swapping transcript records', Mtype.PROG))
+        param_fn = os.path.join(args.out_dir, "swap_params.json")
+        store_params(args, param_fn)
+        swap.main(args)
     print(tmessage(f'finished', Mtype.PROG))
 
 if __name__ == "__main__":

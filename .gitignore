@@ -3,3 +3,5 @@ tools/
 scripts/__pycache__/
 scripts/tidy/__pycache__/
 scripts/tidy/test_results/
+scripts/tidy/build/lib/
+scripts/tidy/tidy.egg-info/

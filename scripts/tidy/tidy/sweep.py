@@ -73,7 +73,10 @@ def trim_chain(in_chain, strand, l, side):
 def define_cds(start, end, tx, n) -> None:
     assert tx.sorted[0] # check if exon chain is sorted
     temp_chain = trim_chain(copy.deepcopy(tx.chains[0]), tx.strand, start, 0)
+    for x in temp_chain:
+        x.type = 'CDS' # change the feature type to CDS
     new_cds_chain = trim_chain(temp_chain, tx.strand, n - end, 1)
+    assert new_cds_chain[0].type == 'CDS'
     tx.set_chain(1, new_cds_chain)
 
 def find_alt_start_stop(tx, cds_coords, nseq, w):
