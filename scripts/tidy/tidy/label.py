@@ -61,7 +61,6 @@ def check_ptc(tx, pseq, tsle) -> bool:
         tx.att_tbl['valid_ORF'] = 'False'; return True
     return False
 
-
 def main(args):
     if not is_pickled(args.in_file):
         print(tmessage("input file must a pickle object", Mtype.ERR))

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from tidy.utils import *
-from tidy import name, build, trim, label, sweep, swap
+from tidy import name, build, trim, label, sweep, swap, merge
 
 def parse():
     parser = argparse.ArgumentParser(description="")
@@ -93,6 +93,11 @@ def main():
         param_fn = os.path.join(args.out_dir, "swap_params.json")
         store_params(args, param_fn)
         swap.main(args)
+    elif args.module == 'merge':
+        print(tmessage(f'merging two annotations', Mtype.PROG))
+        param_fn = os.path.join(args.out_dir, "merge_params.json")
+        store_params(args, param_fn)
+        merge.main(args)
     print(tmessage(f'finished', Mtype.PROG))
 
 if __name__ == "__main__":

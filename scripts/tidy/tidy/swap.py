@@ -39,9 +39,11 @@ def swap_arecs(gan, fn, fmt, id_mapping, oid2tid_tbl, split_tid, tx_ftype, note)
                     to_swap_info[tid][2].append((gline.start, gline.end, gline.strand))
             else:
                 load = False
+
     for tid in id_mapping:
         if tid not in to_swap_info:
             print(tmessage(f"{tid} not found in second input", Mtype.WARN))
+
     for o_tid in to_swap_info:
         tstart, tend, strand = to_swap_info[o_tid][0]
         exons = to_swap_info[o_tid][1]
@@ -84,6 +86,7 @@ def swap_arecs(gan, fn, fmt, id_mapping, oid2tid_tbl, split_tid, tx_ftype, note)
     return len(to_swap_info)
 
 def qc_gan(gan) -> None:
+
     for tid in gan.txes:
         tx = gan.txes[tid]
         e_chain = tx.chains[0]
@@ -114,14 +117,6 @@ def qc_gan(gan) -> None:
                 c.att_tbl['ID'] = f'{tid}-cds-{ctr}'
             ctr += 1
 
-        tstart = tx.start
-        tend = tx.end
-        gene = gan.genes[tx.parent]
-        if tstart < gene.start:
-            gene.start = tstart
-        if tend < gene.end:
-            gene.end = tend
-
 def main(args):
     if not is_pickled(args.in_file):
         print(tmessage("input file must a pickle object", Mtype.ERR))
@@ -129,6 +124,7 @@ def main(args):
     
     print(tmessage("loading pickled gan", Mtype.PROG))
     with open(args.in_file, 'rb') as f: gan = pickle.load(f)
+    
     oid2tid_tbl = build_oid2tid_tbl(gan)
 
     id_mapping = load_map(args.map_file)
@@ -138,12 +134,13 @@ def main(args):
     else:
         split_tid = False
         tx_ftype = 'transcript'
+
     n_swapped = swap_arecs(gan, args.input_2, args.fmt.lower(), id_mapping, \
                         oid2tid_tbl, split_tid, tx_ftype, args.note)
+
     print(tmessage(f"swapped records for {n_swapped} transcripts", Mtype.PROG))
     qc_gan(gan)
 
-    print(tmessage(f"saving results", Mtype.PROG))
     s = gan.to_str(args.fmt)
     with open(os.path.join(args.out_dir, f'swapped.{args.fmt}'), 'w') as fh: fh.write(s)
     save_pth = os.path.join(args.out_dir, 'swapped.pkl')
