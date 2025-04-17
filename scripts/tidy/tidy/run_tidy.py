@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 
 from tidy.utils import *
-from tidy import name, build, trim, label, sweep, swap, merge
+from tidy import name, build, trim, label, sweep, swap, merge, fmt
 
 def parse():
     parser = argparse.ArgumentParser(description="")
 
-    # TODO: add -i as a common arg
     parser.add_argument('--fmt', type=str, help="", required=False, \
                     default="gff", choices=['gff', 'gtf'])
     parser.add_argument('-o', '--out-dir', type=str, help="", required=True)
@@ -56,6 +55,14 @@ def parse():
     parser_merge = subparsers.add_parser('merge', help="")
     parser_merge.add_argument('-i2', '--input-2', type=str, help="", required=True)
 
+    parser_fmt = subparsers.add_parser('format', help="")
+    parser_fmt.add_argument('-sub', '--sub-file', type=str, help="", required=True)
+    parser_fmt.add_argument('--schema', type=lambda s: s.split(','), required=False, \
+                default=['ID', 'Parent', 'transcript_biotype'])
+    parser_fmt.add_argument('-c', '--cds-file', type=str, help="", required=True)
+    parser_fmt.add_argument('-ip', '--id-prefix', type=str, help="", required=True)
+    parser_fmt.add_argument('-plc', '--plc-holder', type=str, help="blah", required=False, default='')
+
     args = parser.parse_args()
     return args
 
@@ -98,6 +105,11 @@ def main():
         param_fn = os.path.join(args.out_dir, "merge_params.json")
         store_params(args, param_fn)
         merge.main(args)
+    elif args.module == 'format':
+        print(tmessage(f'formatting a concatenated gan', Mtype.PROG))
+        param_fn = os.path.join(args.out_dir, "fmt_params.json")
+        store_params(args, param_fn)
+        fmt.main(args)
     print(tmessage(f'finished', Mtype.PROG))
 
 if __name__ == "__main__":

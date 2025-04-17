@@ -22,4 +22,5 @@ awk -v OFS='\t' '{ print $4, $5, $6 }' "${out_dir}/${prefix}.p1_2.intersect.bed"
 
 # actual merge between gff files
 cat $p1_fn $p2_clean_fn > "${out_dir}/${prefix}.final.gff"
+
 gffread -O -F --keep-exon-attrs "${out_dir}/${prefix}.final.gff" > "${out_dir}/${prefix}.final.sorted.gff"
