@@ -269,7 +269,7 @@ def main(args):
                 alt_orfs.append(coords)
                 cds_coords_tbl[tid] = (coords[1], coords[2])
         write_tup_lst(alt_orfs, os.path.join(args.out_dir, 'alt_orfs.csv'))
-        print(tmessage(f"{len(alt_orfs)} alternative orfs deteced and addressed", Mtype.PROG))
+        print(tmessage(f"{len(alt_orfs)} alternative orfs detected and addressed", Mtype.PROG))
     
     print(tmessage("updating ref protein match and valid_ORFs tags", Mtype.PROG))
     for tid in tqdm(gan.txes):
