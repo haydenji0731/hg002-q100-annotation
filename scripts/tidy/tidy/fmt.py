@@ -120,7 +120,7 @@ def fmt(in_fn, out_fn, sub_gan, sub_oinfos, fmt, id_prefix, plc_holder) -> None:
                 new_gid = f'{id_prefix}_{ln_o.ctg.lower().replace("x", "X").replace("y", "Y")}_{gene_ctr}'
                 if old_gid in sub_gan.genes and ln_o.src == 'miniprot':
                     tid = list(sub_gan.genes[old_gid].children)[0]
-                    # print(sub_oinfos[tid])
+
                     temp = {
                         'ID': new_gid,
                         'gene_name': ln_o.attributes['gene_name'] if plc_holder in old_gid else ln_o.attributes['gene'],
@@ -143,6 +143,7 @@ def fmt(in_fn, out_fn, sub_gan, sub_oinfos, fmt, id_prefix, plc_holder) -> None:
                 assert pid in isoform_ctr
                 old_tid = ln_o.attributes['ID']
                 new_tid = f'{old2new_gene[pid]}.{isoform_ctr[pid]}'
+
                 if old_tid in sub_gan.txes and ln_o.src == 'miniprot':
                     is_valid_orf = True if True not in sub_oinfos[old_tid] else False
                     missing_start, missing_stop, inframe_stop, l_violation = sub_oinfos[old_tid]
@@ -163,6 +164,8 @@ def fmt(in_fn, out_fn, sub_gan, sub_oinfos, fmt, id_prefix, plc_holder) -> None:
                     if l_violation: temp['cds_not_div3'] = 'True'
                     
                     ln_o.attributes = temp
+                else:
+                    ln_o.attributes['ID'] = new_tid
                     
                 old2new_tx[old_tid] = new_tid
                 isoform_ctr[pid] += 1
