@@ -1,0 +1,22 @@
+{
+  "version": "1.2",
+  "dbname": "mat_pdb",
+  "dbtype": "Protein",
+  "db-version": 5,
+  "description": "../../6_add_copies/mat_loff/fmted.modified.prot.fa",
+  "number-of-letters": 89657502,
+  "number-of-sequences": 129374,
+  "last-updated": "2025-07-21T16:53:00",
+  "number-of-volumes": 1,
+  "bytes-total": 104724046,
+  "bytes-to-cache": 90822005,
+  "files": [
+    "mat_pdb.pdb",
+    "mat_pdb.phr",
+    "mat_pdb.pin",
+    "mat_pdb.pot",
+    "mat_pdb.psq",
+    "mat_pdb.ptf",
+    "mat_pdb.pto"
+  ]
+}
