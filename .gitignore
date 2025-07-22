@@ -7,3 +7,4 @@ scripts/tidy/test_results/
 scripts/tidy/build/lib/
 scripts/tidy/tidy.egg-info/
 analysis/STALE/
+data/giab/
