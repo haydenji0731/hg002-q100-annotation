@@ -166,6 +166,7 @@ def fmt(in_fn, out_fn, sub_gan, sub_oinfos, fmt, id_prefix, plc_holder) -> None:
                     ln_o.attributes = temp
                 else:
                     ln_o.attributes['ID'] = new_tid
+                    ln_o.attributes['Parent'] = old2new_gene[pid]
                     
                 old2new_tx[old_tid] = new_tid
                 isoform_ctr[pid] += 1
